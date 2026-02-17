@@ -58,10 +58,17 @@
       <version>2.3.0</version>
     </dependency>
 
+
     <!-- Testing -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.instancio</groupId>
+      <artifactId>instancio-junit</artifactId>
+      <version>3.7.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
