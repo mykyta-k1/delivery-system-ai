@@ -22,6 +22,9 @@ public class Courier {
     @Enumerated(EnumType.STRING)
     private CourierStatus status;
 
+    @Enumerated(EnumType.STRING)
+    private TransportType transportType;
+
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "x", column = @Column(name = "location_x")),

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -16,28 +17,30 @@ import java.util.UUID;
 @Table(name = "orders")
 public class Order {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+        @Id
+        @GeneratedValue(strategy = GenerationType.UUID)
+        private UUID id;
 
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "x", column = @Column(name = "source_x")),
-            @AttributeOverride(name = "y", column = @Column(name = "source_y"))
-    })
-    private GeoPoint source;
+        @Embedded
+        @AttributeOverrides({
+                        @AttributeOverride(name = "x", column = @Column(name = "source_x")),
+                        @AttributeOverride(name = "y", column = @Column(name = "source_y"))
+        })
+        private GeoPoint source;
 
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "x", column = @Column(name = "dest_x")),
-            @AttributeOverride(name = "y", column = @Column(name = "dest_y"))
-    })
-    private GeoPoint destination;
+        @Embedded
+        @AttributeOverrides({
+                        @AttributeOverride(name = "x", column = @Column(name = "dest_x")),
+                        @AttributeOverride(name = "y", column = @Column(name = "dest_y"))
+        })
+        private GeoPoint destination;
 
-    @Enumerated(EnumType.STRING)
-    private OrderStatus status;
+        @Enumerated(EnumType.STRING)
+        private OrderStatus status;
 
-    private UUID courierId;
+        private UUID courierId;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+        private BigDecimal weight = BigDecimal.ONE;
+
+        private LocalDateTime createdAt = LocalDateTime.now();
 }

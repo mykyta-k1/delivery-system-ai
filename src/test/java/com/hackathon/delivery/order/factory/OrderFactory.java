@@ -5,6 +5,7 @@ import com.hackathon.delivery.order.model.OrderStatus;
 import com.hackathon.delivery.shared.GeoPoint;
 import org.instancio.Instancio;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,9 +14,14 @@ import static org.instancio.Select.field;
 public class OrderFactory {
 
     public static Order createNewOrder(GeoPoint source, GeoPoint destination) {
+        return createNewOrder(source, destination, BigDecimal.ONE);
+    }
+
+    public static Order createNewOrder(GeoPoint source, GeoPoint destination, BigDecimal weight) {
         return Instancio.of(Order.class)
                 .set(field(Order::getSource), source)
                 .set(field(Order::getDestination), destination)
+                .set(field(Order::getWeight), weight)
                 .set(field(Order::getStatus), OrderStatus.NEW)
                 .set(field(Order::getCreatedAt), LocalDateTime.now())
                 .ignore(field(Order::getId))

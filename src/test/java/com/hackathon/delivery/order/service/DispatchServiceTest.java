@@ -3,6 +3,7 @@ package com.hackathon.delivery.order.service;
 import com.hackathon.delivery.courier.factory.CourierFactory;
 import com.hackathon.delivery.courier.model.Courier;
 import com.hackathon.delivery.courier.model.CourierStatus;
+import com.hackathon.delivery.courier.model.TransportType;
 import com.hackathon.delivery.courier.repository.CourierRepository;
 import com.hackathon.delivery.order.factory.OrderFactory;
 import com.hackathon.delivery.order.model.Order;
@@ -15,18 +16,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DispatchService Tests")
+@DisplayName("Тести DispatchService")
 class DispatchServiceTest {
 
     @Mock
@@ -36,47 +35,85 @@ class DispatchServiceTest {
     private DispatchService dispatchService;
 
     @Test
-    @DisplayName("Should assign nearest free courier to order")
-    void shouldAssignNearestCourier() {
+    @DisplayName("Повинен призначити найближчого кур'єра, що підходить за вагою")
+    void shouldAssignNearestCapableCourier() {
         // Given
-        GeoPoint orderSource = new GeoPoint(10, 10);
-        Order order = OrderFactory.createNewOrder(orderSource, new GeoPoint(50, 50));
+        Order order = OrderFactory.createNewOrder(
+                new GeoPoint(0, 0),
+                new GeoPoint(0, 0),
+                BigDecimal.valueOf(10) // 10kg order
+        );
 
-        UUID nearCourierId = UUID.randomUUID();
-        Courier nearCourier = CourierFactory.createCourierWithId(nearCourierId, CourierStatus.FREE, 12, 12);
-        Courier farCourier = CourierFactory.createCourierWithId(UUID.randomUUID(), CourierStatus.FREE, 30, 30);
+        Courier courierA = CourierFactory.createFreeCourier(10, 0, TransportType.WALKER); // 1km away, cap 5kg
+        Courier courierB = CourierFactory.createFreeCourier(50, 0, TransportType.BICYCLE); // 5km away, cap 15kg
 
-        List<Courier> freeCouriers = Arrays.asList(nearCourier, farCourier);
-
-        when(courierRepository.findAllByStatus(CourierStatus.FREE)).thenReturn(freeCouriers);
-        when(courierRepository.save(any(Courier.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(courierRepository.findAllByStatus(CourierStatus.FREE))
+                .thenReturn(List.of(courierA, courierB));
 
         // When
         Courier assignedCourier = dispatchService.assignCourier(order);
 
         // Then
-        assertThat(assignedCourier).isNotNull();
-        assertThat(assignedCourier.getId()).isEqualTo(nearCourierId);
+        assertThat(assignedCourier).isEqualTo(courierB);
         assertThat(assignedCourier.getStatus()).isEqualTo(CourierStatus.BUSY);
-
-        verify(courierRepository).findAllByStatus(CourierStatus.FREE);
-        verify(courierRepository).save(nearCourier);
     }
 
     @Test
-    @DisplayName("Should throw exception when no free couriers available")
-    void shouldThrowExceptionWhenNoCouriersAvailable() {
+    @DisplayName("Повинен викинути виняток, якщо немає відповідного кур'єра (перевищення ваги)")
+    void shouldThrowExceptionWhenNoCapableCourierAvailable() {
         // Given
-        Order order = OrderFactory.createNewOrder(new GeoPoint(10, 10), new GeoPoint(50, 50));
+        Order order = OrderFactory.createNewOrder(
+                new GeoPoint(0, 0),
+                new GeoPoint(0, 0),
+                BigDecimal.valueOf(100) // 100kg order
+        );
 
-        when(courierRepository.findAllByStatus(CourierStatus.FREE)).thenReturn(Collections.emptyList());
+        Courier courierA = CourierFactory.createFreeCourier(10, 0, TransportType.WALKER);
+        Courier courierB = CourierFactory.createFreeCourier(10, 0, TransportType.BICYCLE);
+        Courier courierC = CourierFactory.createFreeCourier(10, 0, TransportType.CAR);
 
-        // When & Then
+        when(courierRepository.findAllByStatus(CourierStatus.FREE))
+                .thenReturn(List.of(courierA, courierB, courierC));
+
+        // When/Then
         assertThatThrownBy(() -> dispatchService.assignCourier(order))
                 .isInstanceOf(NoCouriersAvailableException.class)
-                .hasMessageContaining("No free couriers available");
+                .hasMessage("No free couriers available for assignment");
+    }
 
-        verify(courierRepository).findAllByStatus(CourierStatus.FREE);
-        verify(courierRepository, never()).save(any(Courier.class));
+    @Test
+    @DisplayName("Повинен призначити найближчого серед рівних")
+    void shouldAssignNearestAmongEquals() {
+        // Given
+        Order order = OrderFactory.createNewOrder(
+                new GeoPoint(0, 0),
+                new GeoPoint(0, 0),
+                BigDecimal.valueOf(1) // 1kg order
+        );
+
+        Courier courierA = CourierFactory.createFreeCourier(20, 0, TransportType.WALKER); // 2km away
+        Courier courierB = CourierFactory.createFreeCourier(100, 0, TransportType.WALKER); // 10km away
+
+        when(courierRepository.findAllByStatus(CourierStatus.FREE))
+                .thenReturn(List.of(courierA, courierB));
+
+        // When
+        Courier assignedCourier = dispatchService.assignCourier(order);
+
+        // Then
+        assertThat(assignedCourier).isEqualTo(courierA);
+    }
+
+    @Test
+    @DisplayName("Повинен викинути виняток, якщо взагалі немає доступних кур'єрів")
+    void shouldThrowExceptionWhenNoCouriersAvailable() {
+        // Given
+        Order order = OrderFactory.createNewOrder(new GeoPoint(0, 0), new GeoPoint(10, 10));
+        when(courierRepository.findAllByStatus(CourierStatus.FREE)).thenReturn(Collections.emptyList());
+
+        // When/Then
+        assertThatThrownBy(() -> dispatchService.assignCourier(order))
+                .isInstanceOf(NoCouriersAvailableException.class)
+                .hasMessage("No free couriers available for assignment");
     }
 }

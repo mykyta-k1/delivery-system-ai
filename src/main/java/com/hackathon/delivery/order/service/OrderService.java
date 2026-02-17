@@ -19,12 +19,19 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final DispatchService dispatchService;
 
+    /**
+     * Створює нове замовлення та автоматично призначає кур'єра.
+     *
+     * @param request DTO з даними для створення замовлення (точки А і Б, вага).
+     * @return DTO створеного замовлення з інформацією про призначеного кур'єра.
+     */
     @Transactional
     public OrderResponse createOrder(CreateOrderRequest request) {
         // Create new order
         var order = new Order();
         order.setSource(request.source());
         order.setDestination(request.destination());
+        order.setWeight(request.weight());
         order.setStatus(OrderStatus.NEW);
         order.setCreatedAt(LocalDateTime.now());
 

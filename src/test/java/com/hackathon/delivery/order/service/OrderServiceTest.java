@@ -6,6 +6,8 @@ import com.hackathon.delivery.courier.model.CourierStatus;
 import com.hackathon.delivery.order.dto.CreateOrderRequest;
 import com.hackathon.delivery.order.dto.OrderResponse;
 import com.hackathon.delivery.order.model.Order;
+
+import java.math.BigDecimal;
 import com.hackathon.delivery.order.model.OrderStatus;
 import com.hackathon.delivery.order.repository.OrderRepository;
 import com.hackathon.delivery.shared.GeoPoint;
@@ -24,7 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("OrderService Tests")
+@DisplayName("Тести OrderService")
 class OrderServiceTest {
 
     @Mock
@@ -37,12 +39,12 @@ class OrderServiceTest {
     private OrderService orderService;
 
     @Test
-    @DisplayName("Should create order and assign courier successfully")
+    @DisplayName("Повинен успішно створити замовлення та призначити кур'єра")
     void shouldCreateOrderSuccessfully() {
         // Given
         GeoPoint source = new GeoPoint(10, 10);
         GeoPoint destination = new GeoPoint(50, 50);
-        CreateOrderRequest request = new CreateOrderRequest(source, destination);
+        CreateOrderRequest request = new CreateOrderRequest(source, destination, BigDecimal.ONE);
 
         UUID courierId = UUID.randomUUID();
         Courier assignedCourier = CourierFactory.createCourierWithId(courierId, CourierStatus.BUSY, 12, 12);
@@ -72,12 +74,13 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw exception when no couriers available during order creation")
+    @DisplayName("Повинен викинути виняток, якщо під час створення замовлення немає доступних кур'єрів")
     void shouldThrowExceptionWhenNoCouriersAvailable() {
         // Given
         CreateOrderRequest request = new CreateOrderRequest(
                 new GeoPoint(10, 10),
-                new GeoPoint(50, 50));
+                new GeoPoint(50, 50),
+                BigDecimal.ONE);
 
         when(dispatchService.assignCourier(any(Order.class)))
                 .thenThrow(new NoCouriersAvailableException("No free couriers available"));

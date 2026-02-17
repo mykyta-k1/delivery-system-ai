@@ -18,15 +18,28 @@ public class DispatchService {
 
     private final CourierRepository courierRepository;
 
+    /**
+     * Призначає найближчого вільного кур'єра, який здатний перевезти вагу
+     * замовлення.
+     *
+     * @param order Замовлення, для якого потрібно знайти кур'єра.
+     * @return Призначений кур'єр.
+     * @throws NoCouriersAvailableException Якщо немає доступних кур'єрів або жоден
+     *                                      з вільних не може взяти вагу замовлення.
+     */
     @Transactional
     public Courier assignCourier(Order order) {
         List<Courier> freeCouriers = courierRepository.findAllByStatus(CourierStatus.FREE);
 
-        if (freeCouriers.isEmpty()) {
+        List<Courier> capableCouriers = freeCouriers.stream()
+                .filter(courier -> courier.getTransportType().getCapacity().compareTo(order.getWeight()) >= 0)
+                .toList();
+
+        if (capableCouriers.isEmpty()) {
             throw new NoCouriersAvailableException("No free couriers available for assignment");
         }
 
-        Courier nearestCourier = findNearestCourier(freeCouriers, order.getSource());
+        Courier nearestCourier = findNearestCourier(capableCouriers, order.getSource());
         nearestCourier.setStatus(CourierStatus.BUSY);
         courierRepository.save(nearestCourier);
 
