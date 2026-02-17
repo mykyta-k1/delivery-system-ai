@@ -38,19 +38,49 @@ public class OrderService {
         // Assign courier
         Courier assignedCourier = dispatchService.assignCourier(order);
 
-        // Update order with courier assignment
-        order.setCourierId(assignedCourier.getId());
-        order.setStatus(OrderStatus.ASSIGNED);
+        if (assignedCourier != null) {
+            order.setCourierId(assignedCourier.getId());
+            order.setStatus(OrderStatus.ASSIGNED);
+        }
+        // Else: Order remains NEW (Queued)
 
         // Save order
         Order savedOrder = orderRepository.save(order);
 
         // Map to DTO
+        return mapToResponse(savedOrder);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<OrderResponse> getOrders(OrderStatus status) {
+        java.util.List<Order> orders;
+        if (status != null) {
+            orders = orderRepository.findByStatus(status);
+        } else {
+            orders = orderRepository.findAll();
+        }
+
+        return orders.stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    /**
+     * Завершує замовлення.
+     *
+     * @param id ID замовлення.
+     */
+    @Transactional
+    public void completeOrder(java.util.UUID id) {
+        dispatchService.completeOrder(id);
+    }
+
+    private OrderResponse mapToResponse(Order order) {
         return new OrderResponse(
-                savedOrder.getId(),
-                savedOrder.getSource(),
-                savedOrder.getDestination(),
-                savedOrder.getStatus(),
-                savedOrder.getCourierId());
+                order.getId(),
+                order.getSource(),
+                order.getDestination(),
+                order.getStatus(),
+                order.getCourierId());
     }
 }

@@ -20,8 +20,22 @@ public class OrderController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create new order", description = "Creates a new order and assigns the nearest available courier")
+    @Operation(summary = "Створити нове замовлення", description = "Створює замовлення та призначає найближчого кур'єра")
     public OrderResponse createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return orderService.createOrder(request);
+    }
+
+    @GetMapping
+    @Operation(summary = "Отримати замовлення", description = "Отримати список всіх замовлень або відфільтрувати за статусом")
+    public java.util.List<OrderResponse> getOrders(
+            @RequestParam(required = false) com.hackathon.delivery.order.model.OrderStatus status) {
+        return orderService.getOrders(status);
+    }
+
+    @PostMapping("/{id}/complete")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Завершити замовлення", description = "Завершує замовлення та звільняє кур'єра")
+    public void completeOrder(@PathVariable java.util.UUID id) {
+        orderService.completeOrder(id);
     }
 }

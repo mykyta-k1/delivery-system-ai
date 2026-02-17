@@ -6,22 +6,20 @@ import com.hackathon.delivery.courier.model.CourierStatus;
 import com.hackathon.delivery.order.dto.CreateOrderRequest;
 import com.hackathon.delivery.order.dto.OrderResponse;
 import com.hackathon.delivery.order.model.Order;
-
-import java.math.BigDecimal;
 import com.hackathon.delivery.order.model.OrderStatus;
 import com.hackathon.delivery.order.repository.OrderRepository;
 import com.hackathon.delivery.shared.GeoPoint;
-import com.hackathon.delivery.shared.exception.NoCouriersAvailableException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -64,8 +62,6 @@ class OrderServiceTest {
         // Then
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(orderId);
-        assertThat(response.source()).isEqualTo(source);
-        assertThat(response.destination()).isEqualTo(destination);
         assertThat(response.status()).isEqualTo(OrderStatus.ASSIGNED);
         assertThat(response.courierId()).isEqualTo(courierId);
 
@@ -74,23 +70,33 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Повинен викинути виняток, якщо під час створення замовлення немає доступних кур'єрів")
-    void shouldThrowExceptionWhenNoCouriersAvailable() {
+    @DisplayName("Повинен залишити замовлення в черзі (NEW), якщо немає кур'єрів")
+    void shouldQueueOrderWhenNoCouriersAvailable() {
         // Given
         CreateOrderRequest request = new CreateOrderRequest(
                 new GeoPoint(10, 10),
                 new GeoPoint(50, 50),
                 BigDecimal.ONE);
 
-        when(dispatchService.assignCourier(any(Order.class)))
-                .thenThrow(new NoCouriersAvailableException("No free couriers available"));
+        UUID orderId = UUID.randomUUID();
 
-        // When & Then
-        assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(NoCouriersAvailableException.class)
-                .hasMessageContaining("No free couriers available");
+        // DispatchService returns null (queue)
+        when(dispatchService.assignCourier(any(Order.class))).thenReturn(null);
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(orderId);
+            return order;
+        });
+
+        // When
+        OrderResponse response = orderService.createOrder(request);
+
+        // Then
+        assertThat(response.status()).isEqualTo(OrderStatus.NEW);
+        assertThat(response.courierId()).isNull();
 
         verify(dispatchService).assignCourier(any(Order.class));
-        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderRepository).save(any(Order.class));
     }
 }

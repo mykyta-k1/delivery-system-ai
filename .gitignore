@@ -1,5 +1,6 @@
 CONTEXT.md
 RULES.md
+SCENARIO.md
 
 target/
 !.mvn/wrapper/maven-wrapper.jar

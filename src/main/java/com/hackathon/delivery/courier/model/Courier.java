@@ -31,4 +31,7 @@ public class Courier {
             @AttributeOverride(name = "y", column = @Column(name = "location_y"))
     })
     private GeoPoint location;
+
+    @Column(columnDefinition = "integer default 0")
+    private Integer completedOrders = 0;
 }
